@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn get_deinit_fn(comptime T: type) ?*const fn (*T, std.mem.Allocator) void {
+pub fn get_deinit_fn(comptime T: type) ?*const fn (*const T, std.mem.Allocator) void {
     if (@hasDecl(T, "deinit")) {
         const deinit_fn = &@field(T, "deinit");
 

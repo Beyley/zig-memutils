@@ -9,7 +9,7 @@ pub fn Rc(comptime T: type) type {
         const slice_test = if (is_slice) if (@typeInfo(T).Pointer.sentinel != null) @compileError("Sentinel slices are unsupported");
 
         const default_deinit_fn = struct {
-            pub fn deinit_fn(self: *T, allocator: std.mem.Allocator) void {
+            pub fn deinit_fn(self: *const T, allocator: std.mem.Allocator) void {
                 const t_info = @typeInfo(T);
 
                 switch (t_info) {
@@ -21,7 +21,7 @@ pub fn Rc(comptime T: type) type {
             }
         }.deinit_fn;
         const default_deinit_fn_slice = struct {
-            pub fn deinit_fn(self: *T, allocator: std.mem.Allocator) void {
+            pub fn deinit_fn(self: *const T, allocator: std.mem.Allocator) void {
                 const orig_data = @fieldParentPtr(RcImpl, "data", self).orig_data;
                 allocator.free(orig_data);
             }
@@ -33,11 +33,11 @@ pub fn Rc(comptime T: type) type {
         data: if (is_slice) T else *T,
         orig_data: if (is_slice) DataT else void,
         counter: *isize,
-        deinit_fn: *const fn (*T, std.mem.Allocator) void,
+        deinit_fn: *const fn (*const T, std.mem.Allocator) void,
 
         const RcImpl = @This();
 
-        fn _init_w_deinit_fn(data: T, allocator: std.mem.Allocator, deinit_fn: *const fn (*T, std.mem.Allocator) void) !RcImpl {
+        fn _init_w_deinit_fn(data: T, allocator: std.mem.Allocator, deinit_fn: *const fn (*const T, std.mem.Allocator) void) !RcImpl {
             return .{
                 .allocator = allocator,
                 .data = data: {
@@ -54,7 +54,7 @@ pub fn Rc(comptime T: type) type {
                 .deinit_fn = deinit_fn,
             };
         }
-        fn _init_w_deinit_fn_slice(n: usize, allocator: std.mem.Allocator, deinit_fn: *const fn (*T, std.mem.Allocator) void) !RcImpl {
+        fn _init_w_deinit_fn_slice(n: usize, allocator: std.mem.Allocator, deinit_fn: *const fn (*const T, std.mem.Allocator) void) !RcImpl {
             _ = slice_test;
             const slice = try allocator.alloc(SliceItemT, n);
             return .{
@@ -129,7 +129,7 @@ pub fn Rc(comptime T: type) type {
             return if (is_slice) self.data else self.data;
         }
 
-        pub fn drop(self: *RcImpl) void {
+        pub fn drop(self: *const RcImpl) void {
             if (self.counter.* == 0) {
                 std.debug.panic("Rc was already freed", .{});
             }
@@ -146,7 +146,7 @@ pub fn Rc(comptime T: type) type {
             }
         }
 
-        fn deinit(self: *RcImpl) void {
+        fn deinit(self: *const RcImpl) void {
             self.counter.* = 0;
             self.deinit_fn(if (is_slice) &self.data else self.data, self.allocator);
             self.allocator.destroy(self.counter);

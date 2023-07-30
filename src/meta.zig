@@ -15,6 +15,13 @@ pub fn get_deinit_fn(comptime T: type) ?*const fn (*const T, std.mem.Allocator) 
                             deinit_fn(self);
                         }
                     }.deinit_wrapper;
+                } else if (fun.params.len == 1 and fun.params.type.? == *const T) {
+                    return struct {
+                        pub fn deinit_wrapper(self: *const T, allocator: std.mem.Allocator) void {
+                            _ = allocator;
+                            deinit_fn(self);
+                        }
+                    }.deinit_wrapper;
                 } else return null;
             },
             else => return null,
